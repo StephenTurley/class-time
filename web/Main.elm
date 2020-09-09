@@ -12,7 +12,7 @@ main =
         { init = init
         , update = update
         , view = view
-        , subscriptions = \cmd -> Sub.none
+        , subscriptions = subscriptions
         }
 
 
@@ -21,43 +21,56 @@ main =
 
 
 type alias Model =
-    List Event
+    { time : Time.Posix
+    , zone : Time.Zone
+    , schedule : List Event
+    }
 
 
 type alias Event =
-    { startTime : Time.Posix
-    , endTime : Time.Posix
+    { title : String
     , url : String
-    , title : String
+    , startHour : Int
+    , startMinute : Int
+    , durationInMinutes : Int
     }
+
+
+
+-- MSG
+
+
+type Msg
+    = Tick Time.Posix
+    | SetTimeZone Time.Zone
 
 
 
 -- init
 
 
-init : () -> ( Model, Cmd msg )
+init : () -> ( Model, Cmd Msg )
 init _ =
-    let
-        start =
-            Time.millisToPosix 1599673056201
-
-        end =
-            Time.millisToPosix (1599673056201 + (60 * 60 * 1000))
-
-        event =
-            Event start end "http://zoom.com" "Test"
-    in
-    ( [ event ], Cmd.none )
+    ( { time = Time.millisToPosix 0
+      , zone = Time.utc
+      , schedule = []
+      }
+    , Task.perform SetTimeZone Time.here
+    )
 
 
 
 -- update
 
 
-update : msg -> Model -> ( Model, Cmd msg )
+update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        Tick time ->
+            ( { model | time = time }, Cmd.none )
+
+        SetTimeZone zone ->
+            ( { model | zone = zone }, Cmd.none )
 
 
 
@@ -69,7 +82,8 @@ view model =
     { title = "Class Time"
     , body =
         [ h2 [] [ text "Today's schedule" ]
-        , div [] [ ul [] (List.map eventItem model) ]
+        , p [] [ strong [] [ text "Current Time: " ], text (humanTime model.zone model.time) ]
+        , div [] [ ul [] (List.map eventItem model.schedule) ]
         ]
     }
 
@@ -78,18 +92,31 @@ eventItem : Event -> Html msg
 eventItem event =
     li []
         [ a [ href event.url ] [ text event.title ]
-        , p [] [ strong [] [ text "Start Time " ], text (humanTime event.startTime) ]
-        , p [] [ strong [] [ text "End Time " ], text (humanTime event.endTime) ]
+
+        -- , p [] [ strong [] [ text "Start Time " ], text (humanTime event.startTime) ]
+        -- , p [] [ strong [] [ text "End Time " ], text (humanTime event.endTime) ]
         ]
 
 
-humanTime : Time.Posix -> String
-humanTime time =
+humanTime : Time.Zone -> Time.Posix -> String
+humanTime zone time =
     let
         hour =
-            String.fromInt (Time.toHour Time.utc time)
+            String.fromInt (Time.toHour zone time)
 
         minute =
-            String.fromInt (Time.toMinute Time.utc time)
+            String.fromInt (Time.toMinute zone time)
+
+        second =
+            String.fromInt (Time.toSecond zone time)
     in
-    hour ++ ":" ++ minute
+    hour ++ ":" ++ minute ++ ":" ++ second
+
+
+
+-- subscriptions
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Time.every 1000 Tick
