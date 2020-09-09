@@ -2,6 +2,7 @@ module Main exposing (..)
 
 import Browser exposing (Document)
 import Html exposing (..)
+import Time
 
 
 main =
@@ -14,25 +15,41 @@ main =
 
 
 
+-- Model
+
+
+type alias Model =
+    List Event
+
+
+type alias Event =
+    { startTime : Time.Posix
+    , endTime : Time.Posix
+    , url : String
+    , title : String
+    }
+
+
+
 -- init
 
 
-init : () -> ( String, Cmd msg )
+init : () -> ( Model, Cmd msg )
 init _ =
-    ( "Hello World", Cmd.none )
+    ( [], Cmd.none )
 
 
 
 -- update
 
 
-update : msg -> String -> ( String, Cmd msg )
+update : msg -> Model -> ( Model, Cmd msg )
 update msg model =
     ( model, Cmd.none )
 
 
-view : String -> Document msg
+view : Model -> Document msg
 view model =
     { title = "Class Time"
-    , body = [ h2 [] [ text model ] ]
+    , body = [ h2 [] [ text "hello world" ] ]
     }
