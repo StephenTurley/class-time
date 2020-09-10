@@ -37,6 +37,16 @@ type alias Event =
     }
 
 
+startTime : Model -> Event -> Time.Posix
+startTime model event =
+    Time.millisToPosix <| startTimeInMillis model event
+
+
+endTime : Model -> Event -> Time.Posix
+endTime model event =
+    Time.millisToPosix <| endTimeInMillis model event
+
+
 startTimeInMillis : Model -> Event -> Int
 startTimeInMillis model event =
     let
@@ -155,7 +165,7 @@ view model =
         [ h2 [] [ text "Today's schedule" ]
         , p [] [ strong [] [ text "Current Time: " ], text (humanTime model.zone model.time) ]
         , p [] [ strong [] [ text "Current Event: " ], eventDetails model.currentEvent ]
-        , div [] [ ul [] (List.map eventItem sortedEvents) ]
+        , div [] [ ul [] (List.map (eventItem model) sortedEvents) ]
         ]
     }
 
@@ -176,29 +186,48 @@ eventDetails event =
                 [ p [] [ text "Free Time" ] ]
 
 
-eventItem : Event -> Html msg
-eventItem event =
+eventItem : Model -> Event -> Html msg
+eventItem model event =
+    let
+        start =
+            startTime model event
+
+        end =
+            endTime model event
+    in
     li []
         [ a [ href event.url ] [ text event.title ]
-
-        -- , p [] [ strong [] [ text "Start Time " ], text (humanTime event.startTime) ]
-        -- , p [] [ strong [] [ text "End Time " ], text (humanTime event.endTime) ]
+        , p [] [ strong [] [ text "Start: " ], text (humanTime model.zone start) ]
+        , p [] [ strong [] [ text "End: " ], text (humanTime model.zone end) ]
         ]
 
 
 humanTime : Time.Zone -> Time.Posix -> String
 humanTime zone time =
     let
+        ampm =
+            if Time.toHour zone time - 12 > 0 then
+                "pm"
+
+            else
+                "am"
+
         hour =
-            String.fromInt (Time.toHour zone time)
+            Time.toHour zone time
+                |> modBy 12
+                |> String.fromInt
 
         minute =
-            String.fromInt (Time.toMinute zone time)
+            Time.toMinute zone time
+                |> String.fromInt
+                |> String.padLeft 2 '0'
 
         second =
-            String.fromInt (Time.toSecond zone time)
+            Time.toSecond zone time
+                |> String.fromInt
+                |> String.padLeft 2 '0'
     in
-    hour ++ ":" ++ minute ++ ":" ++ second
+    hour ++ ":" ++ minute ++ ":" ++ second ++ " " ++ ampm
 
 
 
