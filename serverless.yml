@@ -18,13 +18,14 @@ functions:
 
 plugins:
   - serverless-s3-sync
+  - serverless-domain-manager
 
 resources:
   Resources:
     AssetsBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: class-time-static-assets
+        BucketName: www.mooneyclassschedule.com
         AccessControl: PublicRead
         WebsiteConfiguration:
           IndexDocument: index.html
@@ -44,7 +45,12 @@ resources:
                 Fn::Join: [ "", [ "arn:aws:s3:::", { "Ref": "AssetsBucket" }, "/*" ] ]
 
 custom:
+  customDomain:
+    domainName: api.mooneyclassschedule.com
+    basePath: ''
+    stage: ${self:provider.stage}
+    createRoute53Record: true
   s3Sync:
-    - bucketName: class-time-static-assets
+    - bucketName: www.mooneyclassschedule.com
       localDir: public/
 
