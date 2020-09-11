@@ -6,43 +6,45 @@ provider:
   name: aws
   runtime: nodejs12.x
 
+functions:
+  schedule:
+    handler: functions/handler.schedule
+    events:
+      - http:
+          path: schedule
+          method: get
+          cors: true
+
+
 plugins:
-    - serverless-s3-sync
+  - serverless-s3-sync
 
 resources:
-    Resources:
-        AssetsBucket:
-            Type: AWS::S3::Bucket
-            Properties:
-                BucketName: class-time-static-assets
-                AccessControl: PublicRead
-                WebsiteConfiguration:
-                    IndexDocument: index.html
-        AssetsBucketPolicy:
-            Type: AWS::S3::BucketPolicy
-            Properties:
-                Bucket:
-                    Ref: AssetsBucket
-                PolicyDocument:
-                    Statement:
-                        - Sid: PublicReadGetObjecdt
-                          Effect: Allow
-                          Principal: "*"
-                          Action:
-                              - s3:GetObject
-                          Resource:
-                              Fn::Join: [
-                                  "", [
-                                      "arn:aws:s3:::",
-                                      {
-                                          "Ref": "AssetsBucket"
-                                      },
-                                      "/*"
-                                      ]
-                                  ]
+  Resources:
+    AssetsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: class-time-static-assets
+        AccessControl: PublicRead
+        WebsiteConfiguration:
+          IndexDocument: index.html
+    AssetsBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket:
+          Ref: AssetsBucket
+        PolicyDocument:
+          Statement:
+            - Sid: PublicReadGetObjecdt
+              Effect: Allow
+              Principal: "*"
+              Action:
+                - s3:GetObject
+              Resource:
+                Fn::Join: [ "", [ "arn:aws:s3:::", { "Ref": "AssetsBucket" }, "/*" ] ]
 
 custom:
-    s3Sync:
-        - bucketName: class-time-static-assets
-          localDir: public/
+  s3Sync:
+    - bucketName: class-time-static-assets
+      localDir: public/
 
