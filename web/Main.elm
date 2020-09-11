@@ -176,9 +176,6 @@ eventDetails event =
         Just e ->
             div []
                 [ a [ href e.url ] [ text e.title ]
-
-                -- , p [] [ strong [] [ text "Start Time " ], text (humanTime event.startTime) ]
-                -- , p [] [ strong [] [ text "End Time " ], text (humanTime event.endTime) ]
                 ]
 
         Nothing ->
@@ -213,17 +210,20 @@ humanTime zone time =
                 "am"
 
         hour =
-            Time.toHour zone time
+            time
+                |> Time.toHour zone
                 |> modBy 12
                 |> String.fromInt
 
         minute =
-            Time.toMinute zone time
+            time
+                |> Time.toMinute zone
                 |> String.fromInt
                 |> String.padLeft 2 '0'
 
         second =
-            Time.toSecond zone time
+            time
+                |> Time.toSecond zone
                 |> String.fromInt
                 |> String.padLeft 2 '0'
     in
@@ -236,4 +236,4 @@ humanTime zone time =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 1000 Tick
+    Time.every 200 Tick
