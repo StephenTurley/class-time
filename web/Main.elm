@@ -3,6 +3,9 @@ module Main exposing (..)
 import Browser exposing (Document)
 import Html exposing (..)
 import Html.Attributes exposing (href)
+import Http
+import Json.Decode exposing (Decoder, field, int, list, map5, string)
+import TW as T
 import Task exposing (Task)
 import Time
 
@@ -14,6 +17,16 @@ main =
         , view = view
         , subscriptions = subscriptions
         }
+
+
+
+-- Msg
+
+
+type Msg
+    = Tick Time.Posix
+    | SetTimeZone Time.Zone
+    | GotSchedule (Result Http.Error (List Event))
 
 
 
@@ -35,6 +48,30 @@ type alias Event =
     , startMinute : Int
     , durationInMinutes : Int
     }
+
+
+fetchSchedule : Cmd Msg
+fetchSchedule =
+    Http.get
+        { url = "https://api.mooneyclassschedule.com/schedule"
+        , expect = Http.expectJson GotSchedule scheduleDecoder
+        }
+
+
+scheduleDecoder : Decoder (List Event)
+scheduleDecoder =
+    list
+        (map5 Event
+            (field "title" string)
+            (field "url" string)
+            (field "startHour" int)
+            (field "startMinute" int)
+            (field "durationInMinutes" int)
+        )
+
+
+
+-- Time helpers
 
 
 startTime : Model -> Event -> Time.Posix
@@ -87,34 +124,17 @@ startOfDay zone currentTime =
 
 
 
--- MSG
-
-
-type Msg
-    = Tick Time.Posix
-    | SetTimeZone Time.Zone
-
-
-
 -- init
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    let
-        events =
-            [ Event "first" "http://google.com" 8 30 30
-            , Event "third" "http://google.com" 9 30 30
-            , Event "last" "http://google.com" 15 7 1
-            , Event "second" "http://google.com" 9 0 30
-            ]
-    in
     ( { time = Time.millisToPosix 0
       , zone = Time.utc
-      , schedule = events
+      , schedule = []
       , currentEvent = Nothing
       }
-    , Task.perform SetTimeZone Time.here
+    , Cmd.batch [ fetchSchedule, Task.perform SetTimeZone Time.here ]
     )
 
 
@@ -130,6 +150,14 @@ update msg model =
 
         SetTimeZone zone ->
             ( updateCurrentEvent { model | zone = zone }, Cmd.none )
+
+        GotSchedule result ->
+            case result of
+                Ok schedule ->
+                    ( { model | schedule = schedule }, Cmd.none )
+
+                Err error ->
+                    ( model, Cmd.none )
 
 
 updateCurrentEvent : Model -> Model
@@ -162,10 +190,28 @@ view model =
     in
     { title = "Class Time"
     , body =
-        [ h2 [] [ text "Today's schedule" ]
-        , p [] [ strong [] [ text "Current Time: " ], text (humanTime model.zone model.time) ]
-        , p [] [ strong [] [ text "Current Event: " ], eventDetails model.currentEvent ]
-        , div [] [ ul [] (List.map (eventItem model) sortedEvents) ]
+        [ div [ T.bg_gray_100, T.h_screen ]
+            [ div [ T.container, T.mx_auto ]
+                [ h2 [ T.text_center, T.font_bold ] [ text "Today's schedule" ]
+                , div
+                    [ T.w_40
+                    , T.mx_auto
+                    , T.my_40
+                    , T.rounded
+                    , T.shadow_lg
+                    , T.text_white
+                    , T.bg_reyn_purple
+                    , T.p_5
+                    , T.cursor_pointer
+                    , T.hover__bg_reyn_gold
+                    , T.hover__text_black
+                    ]
+                    [ p [ T.text_center ] [ text (humanTime model.zone model.time) ]
+                    , p [ T.text_center ] [ strong [] [ text "Current Event: " ], eventDetails model.currentEvent ]
+                    ]
+                , ul [ T.justify_around, T.flex ] (List.map (eventItem model) sortedEvents)
+                ]
+            ]
         ]
     }
 
@@ -175,7 +221,7 @@ eventDetails event =
     case event of
         Just e ->
             div []
-                [ a [ href e.url ] [ text e.title ]
+                [ p [ href e.url ] [ text e.title ]
                 ]
 
         Nothing ->
@@ -192,10 +238,9 @@ eventItem model event =
         end =
             endTime model event
     in
-    li []
-        [ a [ href event.url ] [ text event.title ]
-        , p [] [ strong [] [ text "Start: " ], text (humanTime model.zone start) ]
-        , p [] [ strong [] [ text "End: " ], text (humanTime model.zone end) ]
+    li [ T.p_5 ]
+        [ strong [] [ text event.title ]
+        , p [] [ text (humanTime model.zone start ++ " - " ++ humanTime model.zone end) ]
         ]
 
 
@@ -203,7 +248,7 @@ humanTime : Time.Zone -> Time.Posix -> String
 humanTime zone time =
     let
         ampm =
-            if Time.toHour zone time - 12 > 0 then
+            if Time.toHour zone time - 12 >= 0 then
                 "pm"
 
             else
@@ -213,6 +258,13 @@ humanTime zone time =
             time
                 |> Time.toHour zone
                 |> modBy 12
+                |> (\hr ->
+                        if hr == 0 then
+                            12
+
+                        else
+                            hr
+                   )
                 |> String.fromInt
 
         minute =
@@ -236,4 +288,4 @@ humanTime zone time =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every 200 Tick
+    Time.every 1000 Tick

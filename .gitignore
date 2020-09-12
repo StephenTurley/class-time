@@ -2,5 +2,6 @@
 node_modules/
 elm-stuff/
 public/main.js
+public/main.css
 web/TW.elm
 
